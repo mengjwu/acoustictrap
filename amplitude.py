@@ -7,22 +7,26 @@ from sklearn.multioutput import MultiOutputRegressor
 import time
 import csv
 import datetime
-data_all = np.loadtxt("training_dataset.csv", delimiter=",")
-testing_all = np.loadtxt("sample_testing_50.csv", delimiter=",")
-err = open('predict1lmd_pre.csv','w')
+import csv
+import datetime
+startTime = time.time()
+print("Training process start time is:",startTime)
 
-x = data_all[0:290,0:2]  
-y = data_all[0:290,2:10]  # num*8
-xt = testing_all[0:50,0:2]
-yt = testing_all[0:50,2:10]
+data_all = np.loadtxt("extract_amplitude_for_train_1lmd.csv", delimiter=",")
+testing_all = np.loadtxt("extract_amplitude_for_test_1lmd.csv", delimiter=",")
+err = open('amp_predict_1lmd.csv','w')
+
+x = data_all[0:805,0:18]  #805
+y = data_all[0:805,18:26]  # num*8
+xt = testing_all[0:115,0:18]
+yt = testing_all[0:115,18:26]
 
 scalerx = StandardScaler().fit(x)
 scalery = StandardScaler().fit(y)
 x = scalerx.transform(x)
 y = scalery.transform(y)
 
-# X_train, X_test, Y_train, Y_test = train_test_split(x, y, test_size=0.2)
-X_train, X_test, Y_train, Y_test = train_test_split(x, y, test_size=0.1)
+X_train, X_test, Y_train, Y_test = train_test_split(x, y, test_size=0.13)
 
 print("X trainning size is:",X_train.shape)
 print("Y trainning size is:",Y_train.shape)
@@ -37,10 +41,10 @@ print("xt  size is:",xt.shape)
 #'tanh'，双曲tan函数，返回f（x）= tanh（x）。
 #'relu'，整流后的线性单位函数，返回f（x）= max（0，x）
 model_mlp = MLPRegressor(
-    hidden_layer_sizes=(70,100,180,100,70),  activation='tanh', solver='adam', alpha=0.0001, batch_size='auto',
-    learning_rate='constant', learning_rate_init=0.001, power_t=0.5, max_iter=5000, shuffle=True,
-    random_state=1, tol=0.0001, verbose=False, warm_start=False, momentum=0.9, nesterovs_momentum=True,
-    early_stopping=False,beta_1=0.9, beta_2=0.999, epsilon=1e-08)
+    hidden_layer_sizes=(70,160,250,160,70),  activation='tanh', solver='adam', alpha=0.0001, batch_size='auto',
+    learning_rate='constant', learning_rate_init=0.0004, power_t=0.7, max_iter=7000, shuffle=True,
+    random_state=1, tol=0.0001, verbose=False, warm_start=False, momentum=0.95, nesterovs_momentum=True,
+    early_stopping=False, beta_1=0.95, beta_2=0.999, epsilon=1e-08)
 
 # model_mlp.fit(X_train, y_train)
 # 将创建的模型对象作为参数传入
@@ -62,18 +66,17 @@ wrapper.fit(X_train, Y_train)
 # plt.plot(X_test, result, 'ro')
 # plt.show()
 
-startTime = time.time()
-print("Start time is:",startTime)
 wrapper_score = wrapper.score(X_test,Y_test)
 # print(X_test)
 print('sklearn多层感知器-回归模型得分',wrapper_score)#预测正确/总数
 result = wrapper.predict(X_test)
 stopTime = time.time()
-print("Stop time is:",stopTime)
+print("Training process stop time is:",stopTime)
 sumTime = stopTime - startTime
-print('总时间是：', sumTime)
+print('Training process time for AMPLITUDE [units: second]:', sumTime)
 
-for i in range(0,50,1):
+startTime1 = time.time()
+for i in range(0,115,1):
     data_all_testing_x = np.array([xt[i]])
     data_all_testing = scalerx.transform(data_all_testing_x)
     result_testing_y = wrapper.predict(data_all_testing)
@@ -82,17 +85,20 @@ for i in range(0,50,1):
     for j in result_testing_y_trans:
         writer.writerow(j)
 err.close()
+stopTime1 = time.time()
+print('Testing process time for 115 samples in AMPLITUDE [units: second]:', stopTime1-startTime1)
 
-data_all_testing_x1 = np.array([[x_axis_coordinate, y_axis_coordiante]])
+
+data_all_testing_x1 = np.array([[133, 184, 160.94, 164.57, 168.21, 171.85, 175.49, 179.12, 182.76, 186.4, 262.62, 260.53, 258.42, 256.33, 254.23, 252.13, 250.03, 247.93]])
 data_all_testing1 = scalerx.transform(data_all_testing_x1)
 result_testing_y1 = wrapper.predict(data_all_testing1)
 result_testing_y_trans1 = scalery.inverse_transform(result_testing_y1)
-print("amplitude 预测结果是",result_testing_y_trans1)
+print("amplitude prediction:",result_testing_y_trans1)
 max_amp=np.max(result_testing_y_trans1)
 coff_amp=max_amp/result_testing_y_trans1
-print("amplitude coefficients是：",coff_amp)
+print("amplitude modulated (AM) coefficients ：",coff_amp)
 
-# result1 = wrapper.predict([x,y]])
+# result1 = wrapper.predict([[125,143]])
 # print(result1)
 # inp = [[ele] for ele in X_train]
 # pre = clf.predict(inp)
